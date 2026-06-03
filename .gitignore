@@ -1,3 +1,39 @@
-build/bin
-node_modules
-frontend/dist
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of go build / go install
+/openstonks
+app/openstonks
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency vendor directory
+vendor/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# IDE / editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Docker build artifacts
+.dockerignore
