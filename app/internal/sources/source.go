@@ -5,21 +5,15 @@ import (
 	"time"
 )
 
-// Candle is a single OHLCV bar for a symbol.
-type Candle struct {
-	Symbol string
-	Time   time.Time
-	Open   float64
-	High   float64
-	Low    float64
-	Close  float64
-	Volume int64
-	Source string
+type LiveQuote struct {
+	Symbol    string
+	Price     float64
+	UpdatedAt time.Time
+	Source    string
 }
 
-// PriceSource is the interface every data source must implement.
-type PriceSource interface {
+// LivePricer fetches the current market price for a batch of symbols.
+type LivePricer interface {
 	Name() string
-	// FetchCandles fetches 1-minute OHLCV candles for a batch of symbols.
-	FetchCandles(ctx context.Context, symbols []string) ([]Candle, error)
+	FetchLive(ctx context.Context, symbols []string) ([]LiveQuote, error)
 }

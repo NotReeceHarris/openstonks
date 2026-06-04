@@ -15,19 +15,17 @@ type yfinanceClient struct {
 	httpClient *http.Client
 }
 
-func NewYFinance(baseURL string) PriceSource {
+func NewYFinance(baseURL string) LivePricer {
 	return &yfinanceClient{
 		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
 func (c *yfinanceClient) Name() string { return "yfinance" }
 
-func (c *yfinanceClient) FetchCandles(ctx context.Context, symbols []string) ([]Candle, error) {
-	endpoint := fmt.Sprintf("%s/candles?symbols=%s", c.baseURL, url.QueryEscape(strings.Join(symbols, ",")))
+func (c *yfinanceClient) FetchLive(ctx context.Context, symbols []string) ([]LiveQuote, error) {
+	endpoint := fmt.Sprintf("%s/live?symbols=%s", c.baseURL, url.QueryEscape(strings.Join(symbols, ",")))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -45,35 +43,27 @@ func (c *yfinanceClient) FetchCandles(ctx context.Context, symbols []string) ([]
 	}
 
 	var body []struct {
-		Symbol string  `json:"symbol"`
-		Time   string  `json:"time"`
-		Open   float64 `json:"open"`
-		High   float64 `json:"high"`
-		Low    float64 `json:"low"`
-		Close  float64 `json:"close"`
-		Volume int64   `json:"volume"`
+		Symbol    string  `json:"symbol"`
+		Price     float64 `json:"price"`
+		UpdatedAt string  `json:"updated_at"`
+		Source    string  `json:"source"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+		return nil, fmt.Errorf("decode: %w", err)
 	}
 
-	candles := make([]Candle, 0, len(body))
-	for _, c := range body {
-		t, err := time.Parse(time.RFC3339, c.Time)
+	quotes := make([]LiveQuote, 0, len(body))
+	for _, q := range body {
+		t, err := time.Parse(time.RFC3339, q.UpdatedAt)
 		if err != nil {
-			continue
+			t = time.Now().UTC()
 		}
-		candles = append(candles, Candle{
-			Symbol: c.Symbol,
-			Time:   t,
-			Open:   c.Open,
-			High:   c.High,
-			Low:    c.Low,
-			Close:  c.Close,
-			Volume: c.Volume,
-			Source: "yfinance",
+		quotes = append(quotes, LiveQuote{
+			Symbol:    q.Symbol,
+			Price:     q.Price,
+			UpdatedAt: t,
+			Source:    q.Source,
 		})
 	}
-
-	return candles, nil
+	return quotes, nil
 }
