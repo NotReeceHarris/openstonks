@@ -15,24 +15,35 @@ func Migrate(ctx context.Context, conn *pgx.Conn) error {
 	}
 
 	_, err = conn.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS stock_prices (
-			id          SERIAL,
-			symbol      TEXT        NOT NULL,
-			price       NUMERIC     NOT NULL,
-			recorded_at TIMESTAMPTZ NOT NULL
+		CREATE TABLE IF NOT EXISTS candles (
+			time   TIMESTAMPTZ NOT NULL,
+			symbol TEXT        NOT NULL,
+			open   NUMERIC     NOT NULL,
+			high   NUMERIC     NOT NULL,
+			low    NUMERIC     NOT NULL,
+			close  NUMERIC     NOT NULL,
+			volume BIGINT      NOT NULL
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("create table: %w", err)
+		return fmt.Errorf("create candles table: %w", err)
 	}
 
 	_, err = conn.Exec(ctx, `
-		SELECT create_hypertable('stock_prices', 'recorded_at', if_not_exists => TRUE)
+		SELECT create_hypertable('candles', 'time', if_not_exists => TRUE)
 	`)
 	if err != nil {
 		return fmt.Errorf("create hypertable: %w", err)
 	}
 
-	log.Println("schema ready: stock_prices hypertable exists")
+	// Prevent duplicate candles for the same symbol+minute
+	_, err = conn.Exec(ctx, `
+		CREATE UNIQUE INDEX IF NOT EXISTS candles_symbol_time_idx ON candles (symbol, time)
+	`)
+	if err != nil {
+		return fmt.Errorf("create unique index: %w", err)
+	}
+
+	log.Println("schema ready: candles hypertable exists")
 	return nil
 }
