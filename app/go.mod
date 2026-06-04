@@ -1,11 +1,11 @@
 module openstonks
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/Finnhub-Stock-API/finnhub-go/v2 v2.0.22
 	github.com/alpacahq/alpaca-trade-api-go/v3 v3.11.0
-	github.com/jackc/pgx/v5 v5.7.1
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/polygon-io/client-go v1.16.18
 )
 
