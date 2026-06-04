@@ -1,8 +1,6 @@
 module openstonks
 
-go 1.24.0
-
-toolchain go1.24.13
+go 1.25
 
 require github.com/jackc/pgx/v5 v5.7.1
 
