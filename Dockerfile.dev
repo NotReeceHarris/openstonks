@@ -1,0 +1,11 @@
+# Dev-only image: runs Air for live reload. Source is mounted at runtime.
+FROM golang:1.25-alpine
+
+WORKDIR /src
+
+RUN go install github.com/air-verse/air@latest
+
+COPY app/go.mod app/go.sum ./
+RUN go mod download
+
+ENTRYPOINT ["air"]
