@@ -45,6 +45,7 @@ func main() {
 
 	pricers := []sources.LivePricer{
 		sources.NewYFinance(yfinanceURL),
+		sources.NewBinance(),
 	}
 	if k := os.Getenv("POLYGON_API_KEY"); k != "" {
 		pricers = append(pricers, sources.NewPolygon(k))

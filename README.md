@@ -1,11 +1,12 @@
 # OpenStonks
 
-Real-time stock price ingestion into a TimescaleDB time-series database. Fetches live prices from multiple market data sources and keeps both a current snapshot and full price history per symbol.
+Real-time stock and cryptocurrency price ingestion into a TimescaleDB time-series database. Fetches live prices from multiple market data sources and keeps both a current snapshot and full price history per symbol.
 
 ## Architecture
 
 ```
 YFinance Service ─┐
+Binance API       │
 Polygon API       ├──► Go Ingester ──► PostgreSQL + TimescaleDB
 Alpaca API        │
 Finnhub API      ─┘
@@ -43,14 +44,25 @@ Both commands start the full stack: TimescaleDB, the YFinance microservice, and 
 
 Set environment variables in your shell or a `.env` file before running. Only `SYMBOLS` and `UPDATE_INTERVAL` are required — API keys are optional and enable additional data sources.
 
-| Variable            | Default           | Description                                     |
-|---------------------|-------------------|-------------------------------------------------|
-| `SYMBOLS`           | `69 major stocks` | Comma-separated list of ticker symbols to track |
-| `UPDATE_INTERVAL`   | `1s`              | How often to fetch prices (Go duration string)  |
-| `POLYGON_API_KEY`   | `—`               | Enables Polygon.io source                       |
-| `ALPACA_API_KEY`    | `—`               | Enables Alpaca source                           |
-| `ALPACA_API_SECRET` | `—`               | Required with `ALPACA_API_KEY`                  |
-| `FINNHUB_API_KEY`   | `—`               | Enables Finnhub source                          |
+| Variable            | Default                        | Description                                     |
+|---------------------|--------------------------------|-------------------------------------------------|
+| `SYMBOLS`           | `69 major stocks + 10 crypto`  | Comma-separated list of ticker symbols to track |
+| `UPDATE_INTERVAL`   | `1s`                           | How often to fetch prices (Go duration string)  |
+| `POLYGON_API_KEY`   | `—`                            | Enables Polygon.io source                       |
+| `ALPACA_API_KEY`    | `—`                            | Enables Alpaca source                           |
+| `ALPACA_API_SECRET` | `—`                            | Required with `ALPACA_API_KEY`                  |
+| `FINNHUB_API_KEY`   | `—`                            | Enables Finnhub source                          |
+
+### Cryptocurrency
+
+Crypto is supported out of the box via the Binance public REST API (no API key required). Any symbol ending in `USDT` in the `SYMBOLS` list is automatically routed to Binance. The default watchlist includes the top 10 cryptocurrencies by market cap:
+
+```
+BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, XRPUSDT,
+USDCUSDT, ADAUSDT, AVAXUSDT, DOGEUSDT, TRXUSDT
+```
+
+Add any other Binance USDT pair to `SYMBOLS` to track it alongside equities.
 
 ## Connecting to the Database
 
