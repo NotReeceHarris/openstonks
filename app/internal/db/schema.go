@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Migrate(ctx context.Context, conn *pgx.Conn) error {
+func Migrate(ctx context.Context, conn *pgxpool.Pool) error {
 	_, err := conn.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE`)
 	if err != nil {
 		return fmt.Errorf("enable timescaledb extension: %w", err)

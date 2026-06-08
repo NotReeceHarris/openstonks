@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -14,15 +14,15 @@ const (
 	retryDelay  = 2 * time.Second
 )
 
-func Connect(ctx context.Context, databaseURL string) (*pgx.Conn, error) {
+func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		conn, err := pgx.Connect(ctx, databaseURL)
+		pool, err := pgxpool.New(ctx, databaseURL)
 		if err == nil {
-			if pingErr := conn.Ping(ctx); pingErr == nil {
+			if pingErr := pool.Ping(ctx); pingErr == nil {
 				log.Printf("connected to database on attempt %d", attempt)
-				return conn, nil
+				return pool, nil
 			}
-			conn.Close(ctx)
+			pool.Close()
 		}
 		log.Printf("attempt %d/%d: database not ready (%v), retrying in %s...",
 			attempt, maxAttempts, err, retryDelay)

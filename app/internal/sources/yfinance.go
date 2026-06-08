@@ -25,6 +25,10 @@ func NewYFinance(baseURL string) LivePricer {
 func (c *yfinanceClient) Name() string { return "yfinance" }
 
 func (c *yfinanceClient) FetchLive(ctx context.Context, symbols []string) ([]LiveQuote, error) {
+	if len(symbols) == 0 {
+		return nil, nil
+	}
+
 	endpoint := fmt.Sprintf("%s/live?symbols=%s", c.baseURL, url.QueryEscape(strings.Join(symbols, ",")))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

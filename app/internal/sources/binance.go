@@ -7,9 +7,22 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
+
+// binancePairs maps base symbol to its Binance USDT pair name.
+var binancePairs = map[string]string{
+	"BTC":  "BTCUSDT",
+	"ETH":  "ETHUSDT",
+	"BNB":  "BNBUSDT",
+	"SOL":  "SOLUSDT",
+	"XRP":  "XRPUSDT",
+	"USDC": "USDCUSDT",
+	"ADA":  "ADAUSDT",
+	"AVAX": "AVAXUSDT",
+	"DOGE": "DOGEUSDT",
+	"TRX":  "TRXUSDT",
+}
 
 type binanceSource struct{ client *http.Client }
 
@@ -20,11 +33,15 @@ func NewBinance() LivePricer {
 func (b *binanceSource) Name() string { return "binance" }
 
 func (b *binanceSource) FetchLive(ctx context.Context, symbols []string) ([]LiveQuote, error) {
+	pairToBase := map[string]string{}
 	var pairs []string
 	for _, s := range symbols {
-		if strings.HasSuffix(s, "USDT") {
-			pairs = append(pairs, s)
+		pair, ok := binancePairs[s]
+		if !ok {
+			continue
 		}
+		pairs = append(pairs, pair)
+		pairToBase[pair] = s
 	}
 	if len(pairs) == 0 {
 		return nil, nil
@@ -63,8 +80,12 @@ func (b *binanceSource) FetchLive(ctx context.Context, symbols []string) ([]Live
 		if err != nil || price == 0 {
 			continue
 		}
+		base, ok := pairToBase[t.Symbol]
+		if !ok {
+			continue
+		}
 		results = append(results, LiveQuote{
-			Symbol:    t.Symbol,
+			Symbol:    base,
 			Price:     price,
 			UpdatedAt: now,
 			Source:    "binance",

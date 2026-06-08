@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,8 +19,13 @@ import (
 func main() {
 	databaseURL := mustEnv("DATABASE_URL")
 	yfinanceURL := mustEnv("YFINANCE_URL")
-	watchlist := parseSymbols(mustEnv("SYMBOLS"))
-	log.Printf("tracking %d symbols", len(watchlist))
+
+	stockSymbols := parseSymbols(os.Getenv("STOCK_SYMBOLS"))
+	cryptoSymbols := parseSymbols(os.Getenv("CRYPTO_SYMBOLS"))
+	if len(stockSymbols) == 0 && len(cryptoSymbols) == 0 {
+		log.Fatal("at least one of STOCK_SYMBOLS or CRYPTO_SYMBOLS must be set")
+	}
+	log.Printf("tracking %d stocks, %d crypto", len(stockSymbols), len(cryptoSymbols))
 
 	liveInterval := 10 * time.Second
 	if v := os.Getenv("LIVE_INTERVAL"); v != "" {
@@ -35,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	if err := db.Migrate(ctx, conn); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
@@ -43,21 +49,48 @@ func main() {
 
 	repo := stocks.NewRepository(conn)
 
-	pricers := []sources.LivePricer{
+	stockPricers := []sources.LivePricer{
 		sources.NewYFinance(yfinanceURL),
-		sources.NewBinance(),
 	}
 	if k := os.Getenv("POLYGON_API_KEY"); k != "" {
-		pricers = append(pricers, sources.NewPolygon(k))
+		stockPricers = append(stockPricers, sources.NewPolygon(k))
 	}
 	if k, s := os.Getenv("ALPACA_API_KEY"), os.Getenv("ALPACA_API_SECRET"); k != "" && s != "" {
-		pricers = append(pricers, sources.NewAlpaca(k, s))
+		stockPricers = append(stockPricers, sources.NewAlpaca(k, s))
 	}
 	if k := os.Getenv("FINNHUB_API_KEY"); k != "" {
-		pricers = append(pricers, sources.NewFinnhub(k))
+		stockPricers = append(stockPricers, sources.NewFinnhub(k))
 	}
 
-	ingestion.NewLive(pricers, repo, watchlist, liveInterval).Run(ctx)
+	cryptoPricers := []sources.LivePricer{
+		sources.NewBinance(),
+		sources.NewCoinGecko(),
+		sources.NewCoinCap(),
+		sources.NewKraken(),
+	}
+	if k := os.Getenv("COINMARKETCAP_API_KEY"); k != "" {
+		cryptoPricers = append(cryptoPricers, sources.NewCoinMarketCap(k))
+	}
+
+	var wg sync.WaitGroup
+
+	if len(stockSymbols) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ingestion.NewLive(stockPricers, repo, stockSymbols, liveInterval).Run(ctx)
+		}()
+	}
+
+	if len(cryptoSymbols) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ingestion.NewLive(cryptoPricers, repo, cryptoSymbols, liveInterval).Run(ctx)
+		}()
+	}
+
+	wg.Wait()
 	log.Println("shutdown complete")
 }
 

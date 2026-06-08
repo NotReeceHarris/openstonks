@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repository struct {
-	conn *pgx.Conn
+	pool *pgxpool.Pool
 }
 
-func NewRepository(conn *pgx.Conn) *Repository {
-	return &Repository{conn: conn}
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{pool: pool}
 }
 
 // UpsertLivePrice updates live_prices only when the incoming timestamp is newer.
 // Returns true if the row was actually updated (i.e. the price changed).
 func (r *Repository) UpsertLivePrice(ctx context.Context, symbol string, price float64, updatedAt time.Time, source string) (updated bool, err error) {
-	tag, err := r.conn.Exec(ctx, `
+	tag, err := r.pool.Exec(ctx, `
 		INSERT INTO live_prices (symbol, price, updated_at, source)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (symbol) DO UPDATE
@@ -36,7 +36,7 @@ func (r *Repository) UpsertLivePrice(ctx context.Context, symbol string, price f
 
 // InsertHistory records a price into the history table.
 func (r *Repository) InsertHistory(ctx context.Context, symbol string, price float64, t time.Time, source string) error {
-	_, err := r.conn.Exec(ctx, `
+	_, err := r.pool.Exec(ctx, `
 		INSERT INTO price_history (time, symbol, price, source)
 		VALUES ($1, $2, $3, $4)
 	`, t, symbol, price, source)
